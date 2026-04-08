@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Statut Livraison</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #1a1a2e;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      background: #16213e;
+      border-radius: 20px;
+      padding: 25px 20px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .logo {
+      text-align: center;
+      color: #aaa;
+      font-size: 13px;
+      letter-spacing: 2px;
+      margin-bottom: 5px;
+    }
+    .ref {
+      text-align: center;
+      color: #fff;
+      font-size: 26px;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .dest {
+      text-align: center;
+      color: #4fc3f7;
+      font-size: 18px;
+      margin-bottom: 25px;
+      word-break: break-word;
+    }
+    .label {
+      color: #aaa;
+      font-size: 13px;
+      text-align: center;
+      margin-bottom: 15px;
+      letter-spacing: 1px;
+    }
+    .btn {
+      width: 100%;
+      padding: 28px 20px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 18px;
+      font-size: 22px;
+      font-weight: bold;
+      cursor: pointer;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      transition: transform 0.1s, opacity 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-green  { background: linear-gradient(135deg, #27ae60, #2ecc71); box-shadow: 0 4px 15px rgba(46,204,113,0.4); }
+    .btn-orange { background: linear-gradient(135deg, #e67e22, #f39c12); box-shadow: 0 4px 15px rgba(243,156,18,0.4); }
+    .btn-red    { background: linear-gradient(135deg, #c0392b, #e74c3c); box-shadow: 0 4px 15px rgba(231,76,60,0.4); }
+    .btn-icon { font-size: 34px; }
+    .btn-text { font-size: 20px; letter-spacing: 1px; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .done {
+      display: none;
+      text-align: center;
+      margin-top: 25px;
+      padding: 20px;
+      border-radius: 15px;
+      font-size: 20px;
+      font-weight: bold;
+    }
+    .done-green  { background: rgba(46,204,113,0.2); color: #2ecc71; }
+    .done-orange { background: rgba(243,156,18,0.2); color: #f39c12; }
+    .done-red    { background: rgba(231,76,60,0.2);  color: #e74c3c; }
+
+    .error {
+      display: none;
+      text-align: center;
+      color: #e74c3c;
+      margin-top: 20px;
+      font-size: 14px;
+    }
+    .spinner {
+      display: none;
+      text-align: center;
+      color: #aaa;
+      margin-top: 15px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">ADUANAS ALIE</div>
+    <div class="ref" id="ref">...</div>
+    <div class="dest" id="dest">...</div>
+    <div class="label">SELECCIONAR ESTADO / اختر الحالة</div>
+
+    <button class="btn btn-green" onclick="submit('ENTREGADO')">
+      <span class="btn-icon">✅</span>
+      <span class="btn-text">ENTREGADO</span>
+    </button>
+
+    <button class="btn btn-orange" onclick="submit('DESPACHADA')">
+      <span class="btn-icon">📦</span>
+      <span class="btn-text">DESPACHADA</span>
+    </button>
+
+    <button class="btn btn-red" onclick="submit('PROBLEMA')">
+      <span class="btn-icon">⚠️</span>
+      <span class="btn-text">PROBLEMA</span>
+    </button>
+
+    <div class="spinner" id="spinner">⏳ Envoi en cours...</div>
+    <div class="done" id="done"></div>
+    <div class="error" id="error">❌ Erreur. Réessayez ou appelez Saber.</div>
+  </div>
+
+  <script>
+    // ============================================================
+    // REMPLACER PAR L'URL DU GOOGLE APPS SCRIPT (étape suivante)
+    const SCRIPT_URL = 'APPS_SCRIPT_URL_ICI';
+    // ============================================================
+
+    const params  = new URLSearchParams(window.location.search);
+    const ref     = params.get('ref')    || '???';
+    const dest    = params.get('dest')   || '???';
+    const driver  = params.get('driver') || '???';
+
+    document.getElementById('ref').textContent  = ref;
+    document.getElementById('dest').textContent = dest;
+
+    const colors = { ENTREGADO: 'green', DESPACHADA: 'orange', PROBLEMA: 'red' };
+    const msgs   = {
+      ENTREGADO: '✅ ENTREGADO — Merci !',
+      DESPACHADA: '📦 DESPACHADA — OK !',
+      PROBLEMA:  '⚠️ PROBLEMA — Saber a été alerté !'
+    };
+
+    function submit(status) {
+      document.querySelectorAll('.btn').forEach(b => b.disabled = true);
+      document.getElementById('spinner').style.display = 'block';
+
+      const url = `${SCRIPT_URL}?ref=${encodeURIComponent(ref)}&driver=${encodeURIComponent(driver)}&dest=${encodeURIComponent(dest)}&status=${status}`;
+
+      // Utilise une image pour éviter les problèmes CORS
+      const img = new Image();
+      img.onload = img.onerror = function() {
+        document.getElementById('spinner').style.display = 'none';
+        const doneEl = document.getElementById('done');
+        doneEl.textContent = msgs[status];
+        doneEl.className = `done done-${colors[status]}`;
+        doneEl.style.display = 'block';
+      };
+      img.src = url + '&t=' + Date.now();
+
+      // Fallback après 8 secondes
+      setTimeout(function() {
+        if (document.getElementById('spinner').style.display !== 'none') {
+          document.getElementById('spinner').style.display = 'none';
+          document.getElementById('done').style.display = 'none';
+          document.getElementById('error').style.display = 'block';
+        }
+      }, 8000);
+    }
+  </script>
+</body>
+</html>

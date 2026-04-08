@@ -183,6 +183,15 @@
     document.getElementById('colis').textContent = colis;
     document.getElementById('poids').textContent = poids;
 
+    // Clé unique pour ce lien
+    const linkKey = 'sent_' + ref + '_' + dest;
+
+    // Vérifier si déjà soumis sur ce téléphone (localStorage)
+    const alreadySent = localStorage.getItem(linkKey);
+    if (alreadySent) {
+      bloquerPage(alreadySent);
+    }
+
     const colors = { ENTREGADO: 'green', DESPACHADA: 'orange', PROBLEMA: 'red' };
     const msgs   = {
       ENTREGADO: '✅ ENTREGADO — Merci !',
@@ -190,20 +199,33 @@
       PROBLEMA:  '⚠️ PROBLEMA — Saber a été alerté !'
     };
 
+    function bloquerPage(status) {
+      document.querySelectorAll('.btn').forEach(b => b.disabled = true);
+      document.querySelector('.label').style.display = 'none';
+      const doneEl = document.getElementById('done');
+      doneEl.textContent = msgs[status] || '✅ Statut déjà envoyé';
+      doneEl.className = 'done done-' + (colors[status] || 'green');
+      doneEl.style.display = 'block';
+      // Message supplémentaire
+      const lockMsg = document.createElement('div');
+      lockMsg.style.cssText = 'text-align:center;color:#aaa;font-size:13px;margin-top:10px;';
+      lockMsg.textContent = 'Ce lien a déjà été utilisé.';
+      doneEl.after(lockMsg);
+    }
+
     function submit(status) {
+      // Bloquer immédiatement pour éviter double-clic
       document.querySelectorAll('.btn').forEach(b => b.disabled = true);
       document.getElementById('spinner').style.display = 'block';
 
       const url = `${SCRIPT_URL}?ref=${encodeURIComponent(ref)}&driver=${encodeURIComponent(driver)}&dest=${encodeURIComponent(dest)}&colis=${encodeURIComponent(colis)}&poids=${encodeURIComponent(poids)}&status=${status}`;
 
-      // Utilise une image pour éviter les problèmes CORS
       const img = new Image();
       img.onload = img.onerror = function() {
         document.getElementById('spinner').style.display = 'none';
-        const doneEl = document.getElementById('done');
-        doneEl.textContent = msgs[status];
-        doneEl.className = `done done-${colors[status]}`;
-        doneEl.style.display = 'block';
+        // Sauvegarder dans localStorage — bloque les futurs accès sur ce téléphone
+        localStorage.setItem(linkKey, status);
+        bloquerPage(status);
       };
       img.src = url + '&t=' + Date.now();
 
@@ -211,8 +233,9 @@
       setTimeout(function() {
         if (document.getElementById('spinner').style.display !== 'none') {
           document.getElementById('spinner').style.display = 'none';
-          document.getElementById('done').style.display = 'none';
-          document.getElementById('error').style.display = 'block';
+          // Même en cas d'erreur réseau, on bloque (le Apps Script a sûrement reçu)
+          localStorage.setItem(linkKey, status);
+          bloquerPage(status);
         }
       }, 8000);
     }
